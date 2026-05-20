@@ -3,10 +3,10 @@ import os
 import re
 import requests
 import base64
-from datetime import datetime
+import random
+from datetime import datetime, date
 from urllib.parse import quote_plus
 from flask import Flask, render_template, request, redirect, url_for, jsonify, flash, session
-from pymongo import MongoClient
 from bson import ObjectId
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask_bcrypt import Bcrypt
@@ -18,16 +18,36 @@ load_dotenv()
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'supersecretkey')
 
-# Connect to MongoDB
-MONGO_URI = os.environ.get('MONGO_URI', 'mongodb://localhost:27017/dsa_tracker')
-client = MongoClient(MONGO_URI)
+# Connect to MongoDB or use mongomock for development
+USE_MOCK_DB = os.environ.get('USE_MOCK_DB', 'false').lower() == 'true'
+
+if USE_MOCK_DB:
+    print("[INFO] Using mongomock (in-memory database) for development")
+    import mongomock
+    client = mongomock.MongoClient()
+else:
+    from pymongo import MongoClient
+    MONGO_URI = os.environ.get('MONGO_URI', 'mongodb://localhost:27017/dsa_tracker')
+    try:
+        client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
+        # Test the connection
+        client.server_info()
+        print(f"[OK] Connected to MongoDB: {MONGO_URI}")
+    except Exception as e:
+        print(f"[WARN] MongoDB connection failed, falling back to mongomock")
+        import mongomock
+        client = mongomock.MongoClient()
+
 db = client['450_dsa']
 
-# Create indexes
-db.user.create_index('email', unique=True, sparse=True)
-db.user.create_index('github_id', unique=True, sparse=True)
-db.user.create_index('google_id', unique=True, sparse=True)
-db.topic.create_index('name', unique=True)
+# Create indexes (mongomock supports this, but sparse=True may not work fully)
+try:
+    db.user.create_index('email', unique=True, sparse=True)
+    db.user.create_index('github_id', unique=True, sparse=True)
+    db.user.create_index('google_id', unique=True, sparse=True)
+    db.topic.create_index('name', unique=True)
+except Exception as e:
+    print(f"[WARN] Could not create indexes: {e}")
 
 bcrypt = Bcrypt(app)
 login_manager = LoginManager(app)
@@ -330,6 +350,55 @@ def fetch_coding_ninjas(username):
     except Exception as e:
         print("Coding Ninjas Error", e)
         return {}
+
+def get_potd(user=None):
+    """
+    Get the Problem of the Day.
+    - Fetches all question IDs from MongoDB
+    - Uses deterministic random seeding based on today's date
+    - For logged-in users, prioritizes unsolved problems
+    - Returns a single randomly selected question
+    """
+    try:
+        # Fetch all questions from the database
+        all_questions = list(db.question.find({}, {'_id': 1, 'problem': 1, 'url': 1, 'url2': 1, 'topic': 1}))
+        
+        if not all_questions:
+            return None
+        
+        # For logged-in users, filter out solved questions
+        if user and user.is_authenticated:
+            progress = user.progress or {}
+            solved_ids = [q_id for q_id, p in progress.items() if p.get('done')]
+            
+            # Filter questions - keep only unsolved ones
+            unsolved_questions = [q for q in all_questions if str(q['_id']) not in solved_ids]
+            
+            # If no unsolved questions, use all questions
+            questions_to_select = unsolved_questions if unsolved_questions else all_questions
+        else:
+            questions_to_select = all_questions
+        
+        # Seed random with today's date for deterministic selection
+        today_seed = str(date.today())
+        random.seed(today_seed)
+        
+        # Select a random question
+        selected = random.choice(questions_to_select)
+        
+        # Reset random seed after selection
+        random.seed()
+        
+        return {
+            'id': str(selected['_id']),
+            'title': selected.get('problem', 'Unknown'),
+            'url': selected.get('url', ''),
+            'url2': selected.get('url2', ''),
+            'topic_id': str(selected.get('topic', ''))
+        }
+    except Exception as e:
+        print("POTD Error:", e)
+        return None
 
 def init_db():
     if db.topic.count_documents({}) == 0:
@@ -660,6 +729,22 @@ def index():
     else:
         done_questions = 0
     
+    # Get Problem of the Day
+    potd = get_potd(current_user)
+    
+    # Fetch difficulty for POTD if available
+    potd_with_difficulty = None
+    if potd:
+        try:
+            # Try to extract difficulty from the question data
+            question_doc = db.question.find_one({'_id': ObjectId(potd['id'])})
+            if question_doc:
+                # Determine difficulty based on URL or other heuristics
+                # For now, we'll infer from URL patterns or add a difficulty field
+                potd_with_difficulty = {**potd}
+        except Exception as e:
+            print("Error fetching POTD difficulty:", e)
+    
     all_questions = list(db.question.find())
     topic_q_count = {}
     for q in all_questions:
@@ -680,7 +765,7 @@ def index():
             'total': len(t_q_ids)
         }
     
-    return render_template('index.html', topics=topics, total_questions=total_questions, done_questions=done_questions, topic_progress=topic_progress)
+    return render_template('index.html', topics=topics, total_questions=total_questions, done_questions=done_questions, topic_progress=topic_progress, potd=potd_with_difficulty)
 
 
 @app.route('/search')
@@ -750,6 +835,36 @@ def update_question(question_id):
         current_user.reload()
     
     return jsonify({"success": True})
+
+@app.route('/mark_done/<question_id>', methods=['POST'])
+@login_required
+def mark_done(question_id):
+    """Mark a question as done (for POTD feature)"""
+    try:
+        question = db.question.find_one({'_id': ObjectId(question_id)})
+    except Exception:
+        return jsonify({"success": False, "error": "Question not found"}), 404
+    
+    if not question:
+        return jsonify({"success": False, "error": "Question not found"}), 404
+    
+    user_id = current_user.id
+    
+    # Check if already marked as done
+    progress = current_user.progress or {}
+    if progress.get(question_id, {}).get('done'):
+        return jsonify({"success": True, "message": "Already marked as done"})
+    
+    # Mark as done with timestamp
+    update_fields = {
+        f'progress.{question_id}.done': True,
+        f'progress.{question_id}.timestamp': datetime.utcnow()
+    }
+    
+    db.user.update_one({'_id': user_id}, {'$set': update_fields})
+    current_user.reload()
+    
+    return jsonify({"success": True, "message": "Problem marked as done!"})
 
 @app.route('/sync_platforms', methods=['POST'])
 @login_required

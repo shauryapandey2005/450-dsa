@@ -134,12 +134,222 @@
     .topics-grid { grid-template-columns: 1fr; }
     .overall-progress-bar-wrap { flex-direction: column; align-items: flex-start; }
 }
+
+/* ── POTD Card ── */
+.potd-card {
+    background: linear-gradient(135deg, rgba(255, 107, 0, 0.15), rgba(255, 55, 95, 0.1));
+    border: 1.5px solid var(--accent);
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 24px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 16px;
+    align-items: start;
+    transition: all 0.3s ease;
+}
+
+.potd-card:hover {
+    border-color: var(--accent-hover);
+    box-shadow: 0 8px 32px rgba(255, 107, 0, 0.2);
+}
+
+.potd-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: rgba(255, 107, 0, 0.2);
+    border: 1px solid var(--accent);
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 8px;
+    width: fit-content;
+}
+
+.potd-content h2 {
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin: 8px 0;
+    line-height: 1.4;
+    max-width: 600px;
+}
+
+.potd-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-top: 10px;
+    flex-wrap: wrap;
+}
+
+.potd-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.potd-platform {
+    display: inline-block;
+    padding: 4px 10px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.potd-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    justify-content: flex-start;
+}
+
+.potd-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    text-decoration: none;
+    min-width: 140px;
+}
+
+.potd-btn.primary {
+    background: var(--accent);
+    color: white;
+    border: 1px solid var(--accent);
+}
+
+.potd-btn.primary:hover {
+    background: var(--accent-hover);
+    border-color: var(--accent-hover);
+}
+
+.potd-btn.secondary {
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+}
+
+.potd-btn.secondary:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.potd-btn.secondary.done {
+    border-color: var(--success);
+    color: var(--success);
+}
+
+.potd-empty {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 24px;
+    text-align: center;
+    color: var(--text-secondary);
+}
+
+@media (max-width: 768px) {
+    .potd-card {
+        grid-template-columns: 1fr;
+        gap: 14px;
+    }
+
+    .potd-actions {
+        flex-direction: row;
+    }
+
+    .potd-btn {
+        flex: 1;
+        min-width: auto;
+    }
+
+    .potd-content h2 {
+        font-size: 1.1rem;
+    }
+}
 </style>
 
 <div class="page-header">
     <h1>DSA Topics</h1>
     <p>Track your progress across all 450 DSA questions</p>
 </div>
+
+<!-- Problem of the Day Card -->
+{% if potd %}
+<div class="potd-card">
+    <div class="potd-content">
+        <div class="potd-badge">
+            <i class="bi bi-fire"></i> Problem of the Day
+        </div>
+        <h2>{{ potd.title }}</h2>
+        <div class="potd-meta">
+            {% if potd.url %}
+            <div class="potd-meta-item">
+                <span class="potd-platform">{{ potd.url | platform_name }}</span>
+            </div>
+            {% endif %}
+            {% if potd.url2 %}
+            <div class="potd-meta-item">
+                <span class="potd-platform">{{ potd.url2 | platform_name }}</span>
+            </div>
+            {% endif %}
+            <div class="potd-meta-item">
+                <i class="bi bi-calendar-event"></i>
+                {{ "now" | default("Today") }}
+            </div>
+        </div>
+    </div>
+    <div class="potd-actions">
+        {% if potd.url %}
+        <a href="{{ potd.url }}" target="_blank" class="potd-btn primary">
+            <i class="bi bi-arrow-up-right"></i> Solve Now
+        </a>
+        {% endif %}
+        {% if current_user.is_authenticated %}
+        <button class="potd-btn secondary" id="potd-mark-done-btn" onclick="markPotdDone('{{ potd.id }}')">
+            <i class="bi bi-check-circle"></i> Mark as Done
+        </button>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+function markPotdDone(questionId) {
+    if (confirm('Mark this problem as done?')) {
+        fetch(`/mark_done/${questionId}`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'}
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                const btn = document.getElementById('potd-mark-done-btn');
+                btn.classList.add('done');
+                btn.textContent = '✓ Marked Done';
+                btn.disabled = true;
+            }
+        });
+    }
+}
+</script>
+{% endif %}
 
 {% set percentage = 0 %}
 {% if total_questions > 0 %}
