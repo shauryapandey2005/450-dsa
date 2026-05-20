@@ -5,13 +5,14 @@ import requests
 import base64
 from datetime import datetime
 from urllib.parse import quote_plus
-from flask import Flask, render_template, request, redirect, url_for, jsonify, flash, session
+from flask import Flask, render_template, request, redirect, url_for, jsonify, flash, session, Response
 from pymongo import MongoClient
 from bson import ObjectId
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask_bcrypt import Bcrypt
 from authlib.integrations.flask_client import OAuth
 from dotenv import load_dotenv
+from notes_export import build_topic_notes_markdown, topic_notes_filename
 
 load_dotenv()
 
@@ -718,6 +719,24 @@ def topic(topic_id):
         progress_dict = {}
     
     return render_template('topic.html', topic=topic_doc, questions=questions, progress_dict=progress_dict)
+
+@app.route('/topic/<topic_id>/export-notes')
+@login_required
+def export_topic_notes(topic_id):
+    try:
+        topic_doc = db.topic.find_one({'_id': ObjectId(topic_id)})
+    except Exception:
+        return "Topic not found", 404
+    if not topic_doc:
+        return "Topic not found", 404
+
+    questions = list(db.question.find({'topic': topic_doc['_id']}))
+    markdown = build_topic_notes_markdown(topic_doc['name'], questions, current_user.progress)
+    response = Response(markdown, mimetype='text/markdown')
+    response.headers['Content-Disposition'] = (
+        f'attachment; filename={topic_notes_filename(topic_doc["name"])}'
+    )
+    return response
 
 @app.route('/update_question/<question_id>', methods=['POST'])
 @login_required

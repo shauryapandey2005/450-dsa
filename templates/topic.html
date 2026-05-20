@@ -31,6 +31,10 @@
 .notes-btn-sm { background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; padding: 5px 10px; font-size: 0.77rem; font-weight: 600; color: var(--text-secondary); cursor: pointer; transition: all 0.2s; font-family: inherit; }
 .notes-btn-sm:hover { border-color: var(--accent); color: var(--accent); }
 .notes-btn-sm.has-notes { border-color: var(--info); color: var(--info); }
+.topic-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 24px; }
+.topic-header-main { min-width: 0; }
+.export-notes-btn { display: inline-flex; align-items: center; gap: 7px; padding: 8px 14px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-secondary); color: var(--text-secondary); font-size: 0.82rem; font-weight: 700; text-decoration: none; white-space: nowrap; transition: all 0.2s; }
+.export-notes-btn:hover { border-color: var(--accent); color: var(--accent); text-decoration: none; }
 
 /* Modal */
 .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 9999; align-items: center; justify-content: center; }
@@ -45,6 +49,8 @@
 .btn-modal-save:hover { background: var(--accent-hover); }
 
 @media (max-width: 640px) {
+    .topic-header { flex-direction: column; align-items: stretch; }
+    .export-notes-btn { justify-content: center; }
     .q-table thead th:nth-child(1), .q-table tbody td:nth-child(1) { display: none; }
     .q-table { font-size: 0.82rem; }
     .q-table tbody td { padding: 10px 10px; }
@@ -55,8 +61,17 @@
     <i class="bi bi-arrow-left"></i> Back to Topics
 </a>
 
-<div class="topic-title">{{ topic.name }}</div>
-<div class="topic-subtitle">{{ questions | list | length }} questions in this topic</div>
+<div class="topic-header">
+    <div class="topic-header-main">
+        <div class="topic-title">{{ topic.name }}</div>
+        <div class="topic-subtitle">{{ questions | list | length }} questions in this topic</div>
+    </div>
+    {% if current_user.is_authenticated %}
+    <a href="{{ url_for('export_topic_notes', topic_id=topic._id|string) }}" class="export-notes-btn">
+        <i class="bi bi-download"></i> Export Notes
+    </a>
+    {% endif %}
+</div>
 
 <div class="questions-table-wrap">
     <table class="q-table">
