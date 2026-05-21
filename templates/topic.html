@@ -57,7 +57,7 @@
 }
 </style>
 
-<a href="{{ url_for('index') }}" class="back-btn">
+<a href="{{ url_for('tracker.index') }}" class="back-btn">
     <i class="bi bi-arrow-left"></i> Back to Topics
 </a>
 
@@ -67,7 +67,7 @@
         <div class="topic-subtitle">{{ questions | list | length }} questions in this topic</div>
     </div>
     {% if current_user.is_authenticated %}
-    <a href="{{ url_for('export_topic_notes', topic_id=topic._id|string) }}" class="export-notes-btn">
+    <a href="{{ url_for('tracker.export_topic_notes', topic_id=topic._id|string) }}" class="export-notes-btn">
         <i class="bi bi-download"></i> Export Notes
     </a>
     {% endif %}
@@ -171,7 +171,7 @@ function updateQuestion(id, data, callback) {
 // Checkboxes
 document.querySelectorAll('.status-checkbox').forEach(cb => {
     cb.addEventListener('change', function() {
-        if (!isAuthenticated) { this.checked = !this.checked; window.location.href = "{{ url_for('login') }}"; return; }
+        if (!isAuthenticated) { this.checked = !this.checked; window.location.href = "{{ url_for('auth.login') }}"; return; }
         const row = document.getElementById('row-' + this.dataset.id);
         if (this.checked) row.classList.add('row-done'); else row.classList.remove('row-done');
         updateQuestion(this.dataset.id, {done: this.checked}, () => {});
@@ -181,7 +181,7 @@ document.querySelectorAll('.status-checkbox').forEach(cb => {
 // Bookmarks
 document.querySelectorAll('.bookmark-btn').forEach(btn => {
     btn.addEventListener('click', function() {
-        if (!isAuthenticated) { window.location.href = "{{ url_for('login') }}"; return; }
+        if (!isAuthenticated) { window.location.href = "{{ url_for('auth.login') }}"; return; }
         const isBookmarked = this.dataset.bookmarked === 'true';
         const newStatus = !isBookmarked;
         updateQuestion(this.dataset.id, {bookmark: newStatus}, () => {
@@ -228,7 +228,7 @@ function trapFocus(e) {
 
 document.querySelectorAll('.notes-btn').forEach(btn => {
     btn.addEventListener('click', function() {
-        if (!isAuthenticated) { window.location.href = "{{ url_for('login') }}"; return; }
+        if (!isAuthenticated) { window.location.href = "{{ url_for('auth.login') }}"; return; }
         document.getElementById('currentQuestionId').value = this.dataset.id;
         document.getElementById('notesTextarea').value = this.dataset.notes || '';
         openModal(this);

@@ -1,0 +1,93 @@
+import json
+import os
+
+from dotenv import load_dotenv
+from flask import Flask
+
+from app.auth import auth_bp
+from app.extensions import bcrypt, db, login_manager, mongo, oauth
+from app.leaderboard import leaderboard_bp
+from app.profile import profile_bp
+from app.search import search_bp
+from app.tracker import tracker_bp
+from app.utils import platform_color_filter, platform_name_filter
+
+
+def create_app():
+    load_dotenv()
+
+    app = Flask(__name__, template_folder="../templates")
+    app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "supersecretkey")
+    app.config["MONGO_URI"] = os.environ.get("MONGO_URI", "mongodb://localhost:27017/450_dsa")
+
+    mongo.init_app(app)
+    bcrypt.init_app(app)
+    login_manager.init_app(app)
+    oauth.init_app(app)
+
+    login_manager.login_view = "auth.login"
+
+    oauth.register(
+        name="github",
+        client_id=os.environ.get("GITHUB_CLIENT_ID", "your-github-client-id"),
+        client_secret=os.environ.get("GITHUB_CLIENT_SECRET", "your-github-client-secret"),
+        access_token_url="https://github.com/login/oauth/access_token",
+        access_token_params=None,
+        authorize_url="https://github.com/login/oauth/authorize",
+        authorize_params=None,
+        api_base_url="https://api.github.com/",
+        client_kwargs={"scope": "user:email"},
+    )
+
+    oauth.register(
+        name="google",
+        client_id=os.environ.get("GOOGLE_CLIENT_ID", "your-google-client-id"),
+        client_secret=os.environ.get("GOOGLE_CLIENT_SECRET", "your-google-client-secret"),
+        server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
+        client_kwargs={"scope": "openid email profile"},
+    )
+
+    db.user.create_index("email", unique=True, sparse=True)
+    db.user.create_index("github_id", unique=True, sparse=True)
+    db.user.create_index("google_id", unique=True, sparse=True)
+    db.topic.create_index("name", unique=True)
+
+    data_path = os.path.abspath(os.path.join(app.root_path, os.pardir, "data.json"))
+    app._db_initialized = False
+
+    def init_db():
+        if db.topic.count_documents({}) == 0:
+            with open(data_path, "r", encoding="utf-8") as file_obj:
+                data = json.load(file_obj)
+            for topic in data:
+                result = db.topic.insert_one({"name": topic["topicName"], "position": topic["position"]})
+                topic_id = result.inserted_id
+                questions = []
+                for question in topic["questions"]:
+                    questions.append(
+                        {
+                            "topic": topic_id,
+                            "problem": question["Problem"],
+                            "url": question["URL"],
+                            "url2": question.get("URL2", ""),
+                        }
+                    )
+                if questions:
+                    db.question.insert_many(questions)
+
+    @app.before_request
+    def ensure_db_initialized():
+        if not app._db_initialized:
+            init_db()
+            app._db_initialized = True
+
+    app.add_template_filter(platform_name_filter, "platform_name")
+    app.add_template_filter(platform_color_filter, "platform_color")
+
+    app.register_blueprint(auth_bp)
+    app.register_blueprint(tracker_bp)
+    app.register_blueprint(profile_bp)
+    app.register_blueprint(leaderboard_bp)
+    app.register_blueprint(search_bp)
+
+    return app

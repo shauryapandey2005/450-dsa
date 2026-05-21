@@ -322,7 +322,7 @@
   }
 </style>
 
-<a href="{{ url_for('index') }}" class="back-btn"><i class="bi bi-arrow-left"></i> Back to Topics</a>
+<a href="{{ url_for('tracker.index') }}" class="back-btn"><i class="bi bi-arrow-left"></i> Back to Topics</a>
 <div class="page-title">Bookmarks</div>
 <div class="page-sub">Your saved questions for quick review</div>
 
@@ -383,7 +383,7 @@
 <div class="empty-state">
   <i class="bi bi-bookmark"></i>
   <p>You haven't bookmarked any questions yet.<br>Go to a topic and click the bookmark icon to save questions here.</p>
-  <a href="{{ url_for('index') }}"><i class="bi bi-arrow-right-circle"></i> Browse Topics</a>
+  <a href="{{ url_for('tracker.index') }}"><i class="bi bi-arrow-right-circle"></i> Browse Topics</a>
 </div>
 {% endif %}
 

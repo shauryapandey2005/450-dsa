@@ -38,7 +38,7 @@ By participating in this project, you are expected to uphold a welcoming, inclus
 
 ## Environment Setup
 
-This project uses Python, Flask, and SQLAlchemy.
+This project uses Python, Flask, Flask-Login, Flask-Bcrypt, Authlib, and MongoDB via PyMongo/Flask-PyMongo.
 
 1. **Create a virtual environment (optional but recommended):**
    ```bash
@@ -56,9 +56,9 @@ This project uses Python, Flask, and SQLAlchemy.
 
 3. **Run the application locally:**
    ```bash
-   python app.py
+   python run.py
    ```
-   The application will be available at `http://localhost:5000`. The SQLite database (`instance/dsa.db`) will be automatically created on the first run.
+   The application will be available at `http://localhost:5000`. On first request, the app seeds MongoDB from `data.json` if the `topic` collection is empty.
 
 ## How to Contribute
 
@@ -100,8 +100,11 @@ Ready to write some code? Great!
 
 ## Development Guidelines
 
+* **Application structure**: The Flask app now uses an app factory in `app/__init__.py` and blueprint route modules under `app/auth`, `app/tracker`, `app/profile`, `app/leaderboard`, and `app/search`.
+* **Extensions**: Shared Flask extensions live in `app/extensions.py`. Import shared objects such as `db`, `bcrypt`, `login_manager`, and `oauth` from there instead of creating new instances.
+* **Helpers and fetchers**: Reusable helpers live in `app/utils.py`, and external platform fetchers live in `app/platforms/fetchers.py`.
 * **Templates**: We use Jinja2 and Bootstrap 4 for templates (located in the `templates/` folder). Try to keep the UI clean and responsive.
-* **Database**: We use SQLAlchemy ORM with SQLite. If you are modifying the database schema, make sure to update the models in `app.py`.
+* **Database**: MongoDB is used for persistence. If you change data access patterns, keep blueprint imports pointed at `app.extensions` and avoid importing from `app/__init__.py` inside route modules.
 * **Code Style**: Please follow standard Python conventions (PEP 8). Keep your code clean, readable, and well-commented where necessary.
 
 ## Commit Guidelines
