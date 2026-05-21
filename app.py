@@ -16,6 +16,7 @@ from profile_validation import build_profile_updates
 from notes_export import build_topic_notes_markdown, topic_notes_filename
 from progress_export import build_progress_csv
 from streaks import compute_streak
+from platform_fetcher import run_fetch_jobs
 
 load_dotenv()
 
@@ -833,10 +834,26 @@ def sync_platforms():
         cn_user = normalize_coding_ninjas_profile_id(data.get('codingninjas', ''))
         update_fields['codingninjas_username'] = cn_user
 
+    fetch_jobs = {}
+    if lc_user:
+        fetch_jobs['leetcode'] = lambda username=lc_user: fetch_leetcode(username)
+        fetch_jobs['leetcode_rating_history'] = lambda username=lc_user: fetch_leetcode_rating_history(username)
+        fetch_jobs['leetcode_badges'] = lambda username=lc_user: fetch_lc_badges(username)
+    if gh_user:
+        fetch_jobs['github'] = lambda username=gh_user: fetch_github(username)
+    if gfg_user:
+        fetch_jobs['gfg'] = lambda username=gfg_user: fetch_gfg(username)
+    if cn_user:
+        fetch_jobs['coding_ninjas'] = lambda username=cn_user: fetch_coding_ninjas(username)
+    if hr_user:
+        fetch_jobs['hackerrank'] = lambda username=hr_user: fetch_hr_badges(username)
+
+    fetch_results, fetch_errors = run_fetch_jobs(fetch_jobs)
+
     combined = {}
     totals = {}
-    if lc_user:
-        lc = fetch_leetcode(lc_user)
+    lc = fetch_results.get('leetcode') or {}
+    if lc:
         for k, v in lc.get('calendar', {}).items():
             combined[k] = combined.get(k, 0) + v
         if lc.get('total'): 
@@ -849,15 +866,16 @@ def sync_platforms():
             totals['LeetCode_Contests'] = lc['contest'].get('attendedContestsCount', 0)
             totals['LeetCode_Rating'] = int(lc['contest'].get('rating', 0))
             totals['LeetCode_GlobalRank'] = lc['contest'].get('globalRanking', 0)
-        # Fetch rating history for graph
-        rh = fetch_leetcode_rating_history(lc_user)
-        if rh:
-            update_fields['rating_history'] = rh
-        # Fetch LC badges and store in dedicated field
-        lc_badges = fetch_lc_badges(lc_user)
-        update_fields['lc_badges_json'] = json.dumps(lc_badges)
-    if gh_user:
-        gh = fetch_github(gh_user)
+
+    rh = fetch_results.get('leetcode_rating_history')
+    if rh:
+        update_fields['rating_history'] = rh
+
+    if 'leetcode_badges' in fetch_results:
+        update_fields['lc_badges_json'] = json.dumps(fetch_results.get('leetcode_badges') or [])
+
+    gh = fetch_results.get('github') or {}
+    if gh:
         for k, v in gh.get('calendar', {}).items():
             combined[k] = combined.get(k, 0) + v
         if gh.get('stats'):
@@ -865,28 +883,32 @@ def sync_platforms():
             totals['GitHub_PRs'] = gh['stats']['prs']
             totals['GitHub_Merged_PRs'] = gh['stats']['merged_prs']
             totals['GitHub_Commits'] = gh['stats']['commits']
-    if gfg_user:
-        gfg = fetch_gfg(gfg_user)
-        if gfg.get('total'):
-            totals['GFG'] = int(gfg.get('total', 0))
-    if cn_user:
-        cn = fetch_coding_ninjas(cn_user)
-        if cn.get('total'):
-            totals['Coding Ninjas'] = int(cn.get('total', 0))
-    # HackerRank: fetch badges + solved count from same endpoint
-    if hr_user:
-        try:
-            hr_badges, hr_solved = fetch_hr_badges(hr_user)
-            update_fields['hr_badges_json'] = json.dumps(hr_badges)
-            if hr_solved > 0:
-                totals['HackerRank'] = hr_solved
-        except Exception:
-            print("Unable to fetch HackerRank badges")
+
+    gfg = fetch_results.get('gfg') or {}
+    if gfg.get('total'):
+        totals['GFG'] = int(gfg.get('total', 0))
+
+    cn = fetch_results.get('coding_ninjas') or {}
+    if cn.get('total'):
+        totals['Coding Ninjas'] = int(cn.get('total', 0))
+
+    if 'hackerrank' in fetch_results:
+        hr_badges, hr_solved = fetch_results.get('hackerrank') or ([], 0)
+        update_fields['hr_badges_json'] = json.dumps(hr_badges)
+        if hr_solved > 0:
+            totals['HackerRank'] = hr_solved
+
     update_fields['external_daily_counts'] = combined
     update_fields['external_totals'] = totals
     db.user.update_one({'_id': user_id}, {'$set': update_fields})
     current_user.reload()
-    return jsonify({"success": True})
+    response = {"success": True}
+    if fetch_errors:
+        response["warnings"] = {
+            platform: "Unable to sync this platform right now."
+            for platform in fetch_errors
+        }
+    return jsonify(response)
 
 @app.route('/edit_profile', methods=['POST'])
 @login_required
