@@ -1,9 +1,15 @@
 import base64
 import json
+import os
 
+import cloudinary
+import cloudinary.uploader
+import cloudinary.api
 import requests
-from flask import Blueprint, jsonify, render_template, request
+from flask import Blueprint, jsonify, render_template, request, send_file
 from flask_login import current_user, login_required
+import time
+from card_generator import generate_progress_card
 
 from app.extensions import db
 from app.platforms.fetchers import (
@@ -138,6 +144,45 @@ def edit_profile():
     return jsonify({"success": True})
 
 
+card_cache = {}
+CACHE_TTL = 3600
+
+@profile_bp.route("/u/<user_id>/card.png")
+def public_card(user_id):
+    from bson.objectid import ObjectId
+    try:
+        user = db.user.find_one({"_id": ObjectId(user_id)})
+    except Exception:
+        return "Invalid User ID", 400
+        
+    if not user:
+        return "User not found", 404
+        
+    current_time = time.time()
+    if user_id in card_cache:
+        cached_time, cached_image = card_cache[user_id]
+        if current_time - cached_time < CACHE_TTL:
+            cached_image.seek(0)
+            return send_file(cached_image, mimetype="image/png")
+            
+    try:
+        from io import BytesIO
+        name = user.get("name", "Anonymous")
+        c_score = user.get("c_score", 0)
+        dsa_progress = user.get("dsa_progress", 0)
+        current_streak = user.get("current_streak", 0)
+        platforms = user.get("platforms", {})
+        img = generate_progress_card(name, c_score, dsa_progress, current_streak, platforms)
+        img_io = BytesIO()
+        img.save(img_io, 'PNG')
+        img_io.seek(0)
+        
+        card_cache[user_id] = (current_time, img_io)
+        return send_file(img_io, mimetype="image/png")
+    except Exception as e:
+        return str(e), 500
+
+
 @profile_bp.route("/search_universities")
 def search_universities():
     query = request.args.get("q", "").strip()
@@ -174,15 +219,31 @@ def upload_photo():
     ext = file_obj.filename.rsplit(".", 1)[-1].lower()
     if ext not in allowed:
         return jsonify({"success": False, "error": "Invalid file type"}), 400
-    raw = file_obj.read()
-    if len(raw) > 2 * 1024 * 1024:
-        return jsonify({"success": False, "error": "File too large (max 2MB)"}), 400
-    encoded = base64.b64encode(raw).decode("utf-8")
-    mime = f"image/{ext}"
-    photo_url = f"data:{mime};base64,{encoded}"
-    db.user.update_one({"_id": current_user.id}, {"$set": {"profile_photo": photo_url}})
-    current_user.reload()
-    return jsonify({"success": True, "photo_url": photo_url})
+    
+    file_obj.seek(0, os.SEEK_END)
+    size = file_obj.tell()
+    if size > 2 * 1024 * 1024:
+        return jsonify({'success': False, 'error': 'File too large (max 2MB)'}), 400
+    file_obj.seek(0)
+    
+    try:
+        upload_result = cloudinary.uploader.upload(
+            file_obj,
+            folder="450dsa_profiles",
+            public_id=f"user_{current_user.id}",
+            overwrite=True,
+            transformation=[
+                {'width': 500, 'height': 500, 'crop': 'fill', 'gravity': 'face'}
+            ]
+        )
+        photo_url = upload_result.get('secure_url')
+        
+        db.user.update_one({'_id': current_user.id}, {'$set': {'profile_photo': photo_url}})
+        current_user.reload()
+        
+        return jsonify({'success': True, 'photo_url': photo_url})
+    except Exception as e:
+        return jsonify({'success': False, 'error': f"Cloudinary error: {str(e)}"}), 500
 
 
 @profile_bp.route("/profile")
