@@ -1,6 +1,7 @@
 import json
 import os
 import secrets
+from datetime import datetime, timezone
 from pathlib import Path
 
 from app.config import resolve_config_class, env_flag, ProductionConfig
@@ -159,6 +160,13 @@ def create_app(config_class=None):
             return token
 
         return {"csrf_token": csrf_token}
+
+    @app.get("/health")
+    def health_check():
+        return {
+            "status": "healthy",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
 
     @app.route("/service-worker.js")
     def service_worker():
