@@ -66,6 +66,9 @@
     <a class="card-btn ui-btn ui-btn-secondary ui-btn-block" href="{{ url_for('tracker.export_csv') }}" aria-label="Export progress as CSV file">
       <i class="bi bi-download" style="margin-right:6px" aria-hidden="true"></i> Export Progress CSV
     </a>
+    <a class="card-btn ui-btn ui-btn-secondary ui-btn-block" href="{{ url_for('tracker.export_study_plan_ics') }}" aria-label="Export study plan calendar file">
+      <i class="bi bi-calendar-event" style="margin-right:6px" aria-hidden="true"></i> Export Study Calendar
+    </a>
     <div class="prof-bio">{{ user.bio or 'Software Engineer | Problem Solver | DSA Enthusiast' }}</div>
     <div class="social-row">
       {% if user.email %}<a href="mailto:{{ user.email }}" class="social-icon" title="Email" aria-label="Send email to {{ user.email }}"><i class="bi bi-envelope" aria-hidden="true"></i></a>{% endif %}
