@@ -7,6 +7,9 @@ from app.search.service import search_dsa_questions
 
 search_bp = Blueprint("search", __name__)
 
+DEFAULT_SEARCH_LIMIT = 40
+MAX_SEARCH_LIMIT = 80
+
 
 @search_bp.route("/search")
 def search():
@@ -90,9 +93,9 @@ def api_search_questions():
     """
     raw_query = request.args.get("q", "")
     try:
-        limit = min(max(int(request.args.get("limit", 40)), 1), 80)
+        limit = min(max(int(request.args.get("limit", DEFAULT_SEARCH_LIMIT)), 1), MAX_SEARCH_LIMIT)
     except ValueError:
-        limit = 40
+        limit = DEFAULT_SEARCH_LIMIT
 
     filters = {
         "topic_id": request.args.get("topic_id", "").strip(),

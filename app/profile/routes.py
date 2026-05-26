@@ -19,6 +19,8 @@ profile_bp = Blueprint("profile", __name__)
 
 __all__ = ["CACHE_TTL", "build_sync_platforms_response", "get_public_card_image"]
 
+UNIVERSITY_SEARCH_TIMEOUT_SECONDS = 5
+
 
 @profile_bp.route("/sync_platforms", methods=["POST"])
 @login_required
@@ -235,7 +237,7 @@ def search_universities():
         response = requests.get(
             "https://universities.hipolabs.com/search",
             params={"name": query},
-            timeout=5,
+            timeout=UNIVERSITY_SEARCH_TIMEOUT_SECONDS,
         )
         if response.status_code == 200:
             data = response.json()

@@ -15,6 +15,9 @@ from app.utils import ensure_utc_datetime, normalize_coding_ninjas_profile_id, u
 from platform_fetcher import run_fetch_jobs
 
 
+SYNC_COOLDOWN_SECONDS = 600
+
+
 def build_sync_platforms_response(platform_status: dict):
     attempted = sum(1 for value in platform_status.values() if value.get("status") != "skipped")
     synced = sum(1 for value in platform_status.values() if value.get("status") == "synced")
@@ -90,8 +93,8 @@ def sync_user_platforms(user, data, db_handle, cache_backend, now=None):
     if last_sync:
         last_sync = ensure_utc_datetime(last_sync)
         diff = (now - last_sync).total_seconds()
-        if diff < 600:
-            remaining = int(600 - diff)
+        if diff < SYNC_COOLDOWN_SECONDS:
+            remaining = int(SYNC_COOLDOWN_SECONDS - diff)
             mins = remaining // 60
             secs = remaining % 60
             return {
