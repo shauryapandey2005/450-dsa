@@ -5,6 +5,7 @@ from flask import request, session
 
 CSRF_SESSION_KEY = "csrf_token"
 DELETE_ACCOUNT_CSRF_SESSION_KEY = "delete_csrf_token"
+DEACTIVATE_ACCOUNT_CSRF_SESSION_KEY = "deactivate_csrf_token"
 CSRF_HEADER_NAMES = ("X-CSRFToken", "X-CSRF-Token")
 CSRF_PROTECTED_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 
@@ -60,5 +61,8 @@ def validate_csrf_request():
 
     if request.endpoint == "auth.delete_account":
         return _matches_token(token, session.get(DELETE_ACCOUNT_CSRF_SESSION_KEY))
+
+    if request.endpoint == "auth.deactivate_account":
+        return _matches_token(token, session.get(DEACTIVATE_ACCOUNT_CSRF_SESSION_KEY))
 
     return False

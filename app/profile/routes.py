@@ -181,6 +181,14 @@ def public_card(user_id):
         return "Invalid User ID", 400
 
     try:
+        user_doc = db.user.find_one({"_id": object_id}, {"is_deactivated": 1})
+    except TypeError:
+        # Some lightweight test doubles implement a simpler find_one(query) API.
+        user_doc = db.user.find_one({"_id": object_id})
+    if not user_doc or user_doc.get("is_deactivated"):
+        return "User not found", 404
+
+    try:
         img_io, etag, last_modified = get_public_card_image(user_id, object_id, db_handle=db)
     except LookupError:
         return "User not found", 404
