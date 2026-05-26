@@ -6,6 +6,7 @@ from flask_login import current_user, login_required
 
 from app.extensions import cache, db, limiter
 from app.leaderboard.cache import invalidate_leaderboard_cache
+from app.leaderboard.service import build_leaderboard_data, get_user_rank_by_c_score
 from app.profile.card_service import CACHE_TTL, get_public_card_image
 from app.profile.sync_service import (
     build_sync_platforms_response,
@@ -412,6 +413,9 @@ def profile():
     except (json.JSONDecodeError, ValueError):
         print("Unable to handle hackerrank badges")
 
+    leaderboard_entries = build_leaderboard_data()
+    profile_leaderboard_rank = get_user_rank_by_c_score(user.id, leaderboard_entries)
+
     return render_template(
         "profile.html",
         user=user,
@@ -437,4 +441,5 @@ def profile():
         rating_history=rating_history,
         lc_badges=lc_badges,
         hr_badges=hr_badges,
+        profile_leaderboard_rank=profile_leaderboard_rank,
     )
