@@ -1,4 +1,5 @@
 import json
+from datetime import timedelta
 
 import requests
 from flask import Blueprint, current_app, jsonify, render_template, request, send_file
@@ -21,6 +22,20 @@ profile_bp = Blueprint("profile", __name__)
 __all__ = ["CACHE_TTL", "build_sync_platforms_response", "get_public_card_image"]
 
 UNIVERSITY_SEARCH_TIMEOUT_SECONDS = 5
+HEATMAP_DAYS = 168
+
+
+def filter_heatmap_counts(daily_counts, today=None, days=HEATMAP_DAYS):
+    """Return only the daily counts rendered by the profile heatmap."""
+    today = today or utc_now().date()
+    start = today - timedelta(days=days - 1)
+    start_key = start.isoformat()
+    today_key = today.isoformat()
+    return {
+        day: count
+        for day, count in daily_counts.items()
+        if start_key <= day <= today_key
+    }
 
 
 @profile_bp.route("/sync_platforms", methods=["POST"])
@@ -355,6 +370,7 @@ def profile():
             daily_counts[day] = daily_counts.get(day, 0) + count
 
     total_active_days = len(daily_counts)
+    heatmap_daily_counts = filter_heatmap_counts(daily_counts)
     sorted_dates = sorted(daily_counts.keys())
     cumulative_data = []
     cumulative_sum = 0
@@ -435,7 +451,7 @@ def profile():
         gh_prs=gh_prs,
         gh_merged=gh_merged,
         gh_commits=gh_commits,
-        daily_counts=daily_counts,
+        daily_counts=heatmap_daily_counts,
         cumulative_data=cumulative_data,
         total_active_days=total_active_days,
         rating_history=rating_history,
