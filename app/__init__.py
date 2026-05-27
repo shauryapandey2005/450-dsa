@@ -29,6 +29,7 @@ from app.utils import (
     platform_name_filter,
     platform_profile_url,
     question_editorial_links,
+    safe_url_filter,
 )
 
 
@@ -194,6 +195,7 @@ def create_app(config_class=None):
     app.add_template_filter(platform_name_filter, "platform_name")
     app.add_template_filter(platform_color_filter, "platform_color")
     app.add_template_filter(platform_profile_url, "platform_url")
+    app.add_template_filter(safe_url_filter, "safe_url")
 
     @app.context_processor
     def inject_csrf_token():
