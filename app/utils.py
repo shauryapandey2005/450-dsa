@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from flask import jsonify
 
 from app.extensions import db
+from app.platforms.metadata import PLATFORM_META
 from app.search import service as search_service
 
 
@@ -46,21 +47,14 @@ def normalize_coding_ninjas_profile_id(value):
         return match.group(1).strip()
     return value.rstrip("/").split("/")[-1].strip()
 
-
 def platform_name_filter(url):
     if not url:
         return None
     url = url.lower()
-    if "leetcode.com" in url:
-        return "LeetCode"
-    if "geeksforgeeks.org" in url:
-        return "GFG"
-    if "codingninjas.com" in url or "naukri.com/code360" in url:
-        return "Coding Ninjas"
-    if "youtube.com" in url or "youtu.be" in url:
-        return "YouTube"
-    if "hackerrank.com" in url:
-        return "HackerRank"
+    for meta in PLATFORM_META.values():
+        for domain in meta["domains"]:
+            if domain in url:
+                return meta["name"]
     return "Link"
 
 

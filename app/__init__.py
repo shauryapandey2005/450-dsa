@@ -173,6 +173,19 @@ def create_app(config_class=None):
             init_db()
             app._db_initialized = True
 
+    from app.platforms.metadata import PLATFORM_META
+
+    @app.template_filter("platform_badge")
+    def platform_badge_filter(name):
+        meta = PLATFORM_META.get(name)
+        if meta:
+            return meta["badge_class"]
+        return "badge-link"
+
+    @app.context_processor
+    def inject_platform_metadata():
+        return {"PLATFORM_META": PLATFORM_META}
+
     @app.before_request
     def start_route_timer():
         if request.endpoint in ROUTE_TIMING_ENDPOINTS:
