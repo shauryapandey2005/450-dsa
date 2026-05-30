@@ -47,15 +47,16 @@ def resolve_oauth_user(provider_field, provider_id, name, email=None):
         return user_doc, "linked"
 
     result = db.user.insert_one(
-        {
-            "name": name,
-            "email": email,
-            provider_field: provider_id,
-            "progress": {},
-            "is_admin": False,
-            "created_at": utc_now(),
-        }
-    )
+    {
+        "name": name,
+        "email": email,
+        provider_field: provider_id,
+        "progress": {},
+        "profile_visibility": "public",
+        "is_admin": False,
+        "created_at": utc_now(),
+    }
+)
     user_doc = db.user.find_one({"_id": result.inserted_id})
     return user_doc, "created"
 
@@ -194,15 +195,16 @@ def register():
         hashed_password = bcrypt.generate_password_hash(password).decode("utf-8")
         try:
             db.user.insert_one(
-                {
-                    "name": name,
-                    "email": email,
-                    "password": hashed_password,
-                    "progress": {},
-                    "is_admin": False,
-                    "created_at": utc_now(),
-                }
-            )
+    {
+        "name": name,
+        "email": email,
+        "password": hashed_password,
+        "progress": {},
+        "profile_visibility": "public",
+        "is_admin": False,
+        "created_at": utc_now(),
+    }
+)
             flash("Your account has been created! You can now log in.", "success")
             return redirect(url_for("auth.login"))
         except Exception:

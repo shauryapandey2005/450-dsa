@@ -203,18 +203,32 @@ def edit_profile():
 @profile_bp.route("/u/<user_id>/card.png")
 def public_card(user_id):
     from bson.objectid import ObjectId
+
     try:
         object_id = ObjectId(user_id)
     except Exception:
         return "Invalid User ID", 400
 
     try:
-        user_doc = db.user.find_one({"_id": object_id}, {"is_deactivated": 1})
+        user_doc = db.user.find_one(
+            {"_id": object_id},
+            {"is_deactivated": 1, "profile_visibility": 1},
+        )
     except TypeError:
         # Some lightweight test doubles implement a simpler find_one(query) API.
         user_doc = db.user.find_one({"_id": object_id})
+
     if not user_doc or user_doc.get("is_deactivated"):
         return "User not found", 404
+
+    visibility = user_doc.get("profile_visibility", "public")
+    viewer_is_owner = (
+        current_user.is_authenticated
+        and str(current_user.id) == str(object_id)
+    )
+
+    if visibility == "private" and not viewer_is_owner:
+        return "Profile is private", 403
 
     try:
         img_io, etag, last_modified = get_public_card_image(user_id, object_id, db_handle=db)
@@ -236,8 +250,6 @@ def public_card(user_id):
     except Exception:
         current_app.logger.exception("Failed to generate public progress card")
         return "Unable to generate progress card", 500
-
-
 @profile_bp.route("/search_universities")
 def search_universities():
     """Return matching universities for an autocomplete query.
