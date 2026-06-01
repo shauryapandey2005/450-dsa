@@ -5,6 +5,8 @@
 Track your progress through Love Babbar's 450 DSA problems — with platform sync, leaderboard, and more.
 
 [![Open For PR](https://img.shields.io/badge/Open%20For-PR-orange?style=for-the-badge&logo=github)](https://github.com/mohitkumhar/450-dsa)
+[![Security Policy](https://img.shields.io/badge/Security-Policy-red?style=flat&logo=shield)](SECURITY.md)
+[![Code Style](https://img.shields.io/badge/Code%20Style-PEP8-blue?style=flat&logo=python)](https://peps.python.org/pep-0008/)
 ![Python](https://img.shields.io/badge/Python-3.10+-blue?style=flat&logo=python)
 ![Flask](https://img.shields.io/badge/Flask-2.3-black?style=flat&logo=flask)
 ![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-green?style=flat&logo=mongodb)
