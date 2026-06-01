@@ -114,19 +114,38 @@ def test_public_card_valid_user(client, app):
     """Test that /u/<user_id>/card.png returns 200 with valid user."""
     user_id = ObjectId()
     from datetime import datetime, timedelta, timezone
+
     now = datetime.now(timezone.utc)
     user_data = {
         "_id": user_id,
         "name": "Test User",
         "progress": {
             "q1": {"done": True, "timestamp": now},
-            "q2": {"done": True, "timestamp": now - timedelta(days=1)}
+            "q2": {"done": True, "timestamp": now - timedelta(days=1)},
         },
         "external_totals": {
             "LeetCode": 10,
             "GFG": 5,
-        }
+        },
     }
+
+    app.mock_db.question.data = {
+        "q1": {"_id": "q1", "url": "https://leetcode.com/"},
+        "q2": {"_id": "q2", "url": "https://geeksforgeeks.org/"},
+        "q3": {"_id": "q3", "url": ""},
+        "q4": {"_id": "q4", "url": ""},
+    }
+
+    app.mock_db.user.data[str(user_id)] = user_data
+
+    with patch("app.profile.routes.db", app.mock_db):
+        response = client.get(f"/u/{user_id}/card.png")
+
+    assert response.status_code == 200
+    assert response.content_type == "image/png"
+    assert len(response.data) > 0
+
+
 def test_public_card_private_profile_returns_403(client, app):
     """Test that private profiles block public progress card access."""
     user_id = ObjectId()
@@ -146,7 +165,6 @@ def test_public_card_private_profile_returns_403(client, app):
     assert response.status_code == 403
     assert b"Profile is private" in response.data
     
-
 def test_public_card_invalid_user_id(client, app):
     """Test that /u/<invalid_id>/card.png returns 400."""
     with patch('app.profile.routes.db', app.mock_db):
