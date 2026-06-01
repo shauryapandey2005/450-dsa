@@ -29,6 +29,11 @@ DIFFICULTY_FILTERS = {
     "hard": "Hard",
 }
 
+REVISION_STATUSES = {
+    "To Review",
+    "Reviewed",
+    "Needs Practice",
+}
 
 def normalize_difficulty_filter(raw_filter):
     value = (raw_filter or "all").strip().lower()
@@ -293,8 +298,18 @@ def update_question(question_id):
         return json_error("Question not found", status_code=404)
 
     data = request.get_json(silent=True)
+    print("REQUEST DATA:", data)
     if not isinstance(data, dict):
         return jsonify({"success": False, "error": "Request body must be a JSON object"}), 400
+
+    if (
+            "revision_status" in data
+            and data["revision_status"] not in REVISION_STATUSES
+    ):
+            return jsonify({
+                "success": False,
+                "error": "Invalid revision status"
+            }), 400
 
     for field in ("done", "bookmark", "skipped"):
         if field in data and not isinstance(data[field], bool):
@@ -336,6 +351,19 @@ def update_question(question_id):
             message = f"📌 Removed '{question.get('problem', 'Question')}' from bookmarks"
         update_fields[f"progress.{question_id}.bookmark"] = data["bookmark"]
     
+    if "revision_status" in data:
+        print("REVISION RECEIVED:", data["revision_status"])
+
+        update_fields[
+            f"progress.{question_id}.revision_status"
+        ] = data["revision_status"]
+
+        update_fields[
+            f"progress.{question_id}.last_reviewed"
+        ] = utc_now()
+
+        print("UPDATE FIELDS:", update_fields)
+
     if "notes" in data:
         update_fields[f"progress.{question_id}.notes"] = data["notes"]
         message = f"📝 Notes saved for '{question.get('problem', 'Question')}'!"
@@ -347,9 +375,31 @@ def update_question(question_id):
         update_doc = {}
         if update_fields:
             update_doc["$set"] = update_fields
+
         if update_doc:
             db.user.update_one({"_id": user_id}, update_doc)
+
+        db.user.update_one({"_id": user_id}, update_doc)
+
+        result = db.user.update_one(
+            {"_id": user_id},
+            update_doc
+        )
+
+        print("MATCHED:", result.matched_count)
+        print("MODIFIED:", result.modified_count)
+
         current_user.reload()
+
+        print(
+            "AFTER RELOAD:",
+            current_user.progress.get(question_id)
+        )
+
+
+        print(
+            current_user.progress.get(question_id)
+        )
         pre = current_app.config.get("_PRECOMPUTED")
         all_questions = (pre["all_questions"] if pre
                          else list(db.question.find({}, {"_id": 1, "url": 1})))
@@ -493,6 +543,16 @@ def export_json():
                 "notes": item_progress.get('notes', ''),
                 "url": question.get('url', ''),
                 "url2": question.get('url2', ''),
+                "revision_status":
+                item_progress.get(
+                    "revision_status",
+                    "To Review"
+                ),
+
+                "last_reviewed":
+                    item_progress.get(
+                        "last_reviewed"
+                    ),
             })
 
     backup_data = {
@@ -610,11 +670,22 @@ def import_commit():
                 timestamp = utc_now()
 
             new_progress[q_id] = {
-                "done": done,
-                "bookmark": bookmark,
-                "skipped": skipped,
-                "notes": notes,
-                "timestamp": timestamp
+                "done": imp_val["done"],
+                "bookmark": imp_val["bookmark"],
+                "skipped": imp_val["skipped"] if not imp_val["done"] else False,
+                "notes": imp_val["notes"],
+                "timestamp": timestamp,
+
+                "revision_status":
+                    existing.get(
+                        "revision_status",
+                        "To Review"
+                    ),
+
+                "last_reviewed":
+                    existing.get(
+                        "last_reviewed"
+                    )
             }
     else:
         # Replace mode should overwrite only the mapped/imported questions while
@@ -634,7 +705,18 @@ def import_commit():
                 "bookmark": imp_val["bookmark"],
                 "skipped": imp_val["skipped"] if not imp_val["done"] else False,
                 "notes": imp_val["notes"],
-                "timestamp": timestamp
+                "timestamp": timestamp,
+
+                "revision_status":
+                    existing.get(
+                        "revision_status",
+                        "To Review"
+                    ),
+
+                "last_reviewed":
+                    existing.get(
+                        "last_reviewed"
+                    )
             }
 
     solved_items = {q_id: prog for q_id, prog in new_progress.items() if prog.get("done")}

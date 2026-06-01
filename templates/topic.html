@@ -146,6 +146,7 @@
                 <th scope="col">Difficulty</th>
                 <th scope="col">Save</th>
                 <th scope="col">Notes</th>
+                <th scope="col">Revision</th>
             </tr>
         </thead>
         <tbody>
@@ -236,10 +237,51 @@
                         {% if p and p.notes %}Edit{% else %}Add{% endif %}
                     </button>
                 </td>
+
+                <td>
+                    <select
+                        class="revision-select"
+                        data-id="{{ q_id_str }}"
+                    >
+                        <option value="To Review"
+                        {% if not p or p.get('revision_status', 'To Review') == 'To Review' %}
+                        selected
+                        {% endif %}
+                        >
+                            To Review
+                        </option>
+
+                        <option value="Reviewed"
+                        {% if p and p.get('revision_status') == 'Reviewed' %}
+                        selected
+                        {% endif %}
+                        >
+                            Reviewed
+                        </option>
+
+                        <option value="Needs Practice"
+                        {% if p and p.get('revision_status') == 'Needs Practice' %}
+                        selected
+                        {% endif %}
+                        >
+                            Needs Practice
+                        </option>
+                    </select>
+
+                    <div class="small text-muted">
+                        DEBUG:
+                        {{ p }}
+                        <br>
+                        LAST REVIEWED:
+                        {% if p and p.get('last_reviewed') %}
+                            {{ p.get('last_reviewed').strftime('%d-%m-%Y %H:%M') }}
+                        {% endif %}
+                    </div>
+                </td>
             </tr>
             {% endfor %}
             <tr id="empty-state-row" style="display:none;">
-                <td colspan="6" class="text-center" style="padding: 2rem;">
+                <td colspan="7" class="text-center" style="padding: 2rem;">
                     <p style="margin-bottom: 0.75rem; color: var(--text-muted, #888);">
                         No questions match the selected difficulty.
                     </p>
@@ -659,5 +701,25 @@ document.getElementById('practiceRandomBtn').addEventListener('click', function(
     }, 2000);
 });
 
+document.querySelectorAll('.revision-select').forEach(select => {
+
+    select.addEventListener('change', function() {
+
+        console.log(
+            "Revision changed:",
+            this.dataset.id,
+            this.value
+        );
+
+        updateQuestion(
+            this.dataset.id,
+            {
+                revision_status: this.value
+            }
+        );
+
+    });
+
+});
 </script>
 {% endblock %}

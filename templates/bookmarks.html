@@ -111,6 +111,7 @@
         <th scope="col">Problem</th>
         <th scope="col">Save</th>
         <th scope="col">Notes</th>
+        <th scope="col">Revision</th>      
       </tr>
     </thead>
     <tbody>
@@ -147,6 +148,18 @@
             <i class="bi bi-journal-text" aria-hidden="true"></i> {% if p and p.notes %}Edit{% else %}Add{% endif %}
           </button>
         </td>
+
+        <td>
+          <div>
+              {{ p.get('revision_status', 'To Review') if p else 'To Review' }}
+          </div>
+          <small>
+              {% if p and p.get('last_reviewed') %}
+                    {{ p.get('last_reviewed') }}             
+              {% endif %}
+          </small>
+      </td>
+        
       </tr>
       {% endfor %}
     </tbody>
