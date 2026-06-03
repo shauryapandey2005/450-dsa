@@ -376,6 +376,7 @@ def update_question(question_id):
         if update_fields:
             update_doc["$set"] = update_fields
 <<<<<<< HEAD
+<<<<<<< HEAD
 
         if update_doc:
             db.user.update_one({"_id": user_id}, update_doc)
@@ -389,21 +390,31 @@ def update_question(question_id):
 >>>>>>> a4da477 (feat: add revision status and last reviewed date)
 
         result = db.user.update_one(
+=======
+        if update_doc:
+            db.user.update_one({"_id": user_id}, update_doc)
+=======
+        if inc_fields:
+            update_doc["$inc"] = inc_fields
+
+        db.user.update_one(
+>>>>>>> 567a707 (route)
             {"_id": user_id},
             update_doc
         )
 
+<<<<<<< HEAD
 <<<<<<< HEAD
         print("MATCHED:", result.matched_count)
         print("MODIFIED:", result.modified_count)
 
 =======
 >>>>>>> a4da477 (feat: add revision status and last reviewed date)
+=======
+>>>>>>> 9000082 (route)
+>>>>>>> 567a707 (route)
         current_user.reload()
 
-        print(
-            current_user.progress.get(question_id)
-        )
         pre = current_app.config.get("_PRECOMPUTED")
         all_questions = (pre["all_questions"] if pre
                          else list(db.question.find({}, {"_id": 1, "url": 1})))
