@@ -22,6 +22,20 @@ logger = logging.getLogger("flask.app")
 
 SYNC_COOLDOWN_SECONDS = 600
 
+PLATFORM_KEYS = {"leetcode", "github", "gfg", "hackerrank",
+                 "codingninjas", "atcoder", "codewars"}
+
+PLATFORM_TOTAL_KEYS = {
+    "leetcode": {"LeetCode", "LeetCode_Easy", "LeetCode_Medium", "LeetCode_Hard",
+                 "LeetCode_Contests", "LeetCode_Rating", "LeetCode_GlobalRank"},
+    "github": {"GitHub_Issues", "GitHub_PRs", "GitHub_Merged_PRs", "GitHub_Commits"},
+    "gfg": {"GFG"},
+    "codingninjas": {"Coding Ninjas"},
+    "hackerrank": {"HackerRank"},
+    "atcoder": {"AtCoder"},
+    "codewars": {"Codewars"},
+}
+
 
 def build_sync_platforms_response(platform_status: dict):
     attempted = sum(1 for value in platform_status.values() if value.get("status") != "skipped")
@@ -144,7 +158,18 @@ def sync_user_platforms(user, data, db_handle, cache_backend, now=None):
     except ValueError as e:
         return {"success": False, "error": str(e)}, 400
 
-    platform_totals = {}
+    existing_totals = getattr(user, "external_totals", {}) or {}
+    if not isinstance(existing_totals, dict):
+        existing_totals = {}
+    platform_totals = dict(existing_totals)
+
+    # Clear totals for platforms included in this sync so stale data
+    # does not persist when a sync fails or a username is cleared.
+    for platform_key in data:
+        if platform_key in PLATFORM_TOTAL_KEYS:
+            for total_key in PLATFORM_TOTAL_KEYS[platform_key]:
+                platform_totals.pop(total_key, None)
+
     platform_status = {}
 
     def _mark(platform_key: str, status: str, error: str = None):
@@ -292,8 +317,6 @@ def sync_user_platforms(user, data, db_handle, cache_backend, now=None):
     # covered every platform the user has configured.  During the migration
     # from the old flat ``external_daily_counts`` format to per-platform
     # calendars, ``_legacy`` preserves dates from platforms not yet re-synced.
-    PLATFORM_KEYS = {"leetcode", "github", "gfg", "hackerrank",
-                     "codingninjas", "atcoder", "codewars"}
     requested_platforms = {k for k in data if k in PLATFORM_KEYS}
     legacy_counts = getattr(user, "external_daily_counts", {})
     has_legacy = isinstance(legacy_counts, dict) and bool(legacy_counts)
