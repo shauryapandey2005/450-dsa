@@ -195,15 +195,14 @@ def test_import_commit_route_merge(monkeypatch):
     assert "Existing notes" in progress["notes"]
     assert "Imported notes" in progress["notes"]
     assert user["in_sheet_platform_counts"]["LeetCode"] == 1
-<<<<<<< HEAD
+
     # Regression: import commit must update computed stats
     assert user["dsa_progress"] == 100.0
     assert user["current_streak"] >= 1
     assert user["longest_streak"] >= 1
-=======
     assert progress["revision_status"] == "Needs Practice"
     assert progress["last_reviewed"] is not None
->>>>>>> c037100 (fix)
+
 
 
 def test_import_commit_route_replace(monkeypatch):

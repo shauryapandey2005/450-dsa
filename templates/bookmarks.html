@@ -111,7 +111,7 @@
         <th scope="col">Problem</th>
         <th scope="col">Save</th>
         <th scope="col">Notes</th>
-        <th scope="col">Revision</th>      
+        <th scope="col">Revision</th>
       </tr>
     </thead>
     <tbody>
@@ -155,11 +155,11 @@
           </div>
           <small>
               {% if p and p.get('last_reviewed') %}
-                    {{ p.get('last_reviewed') }}             
+                  {{ p.get('last_reviewed').strftime('%d %b %Y %H:%M') }}
               {% endif %}
           </small>
       </td>
-        
+
       </tr>
       {% endfor %}
     </tbody>

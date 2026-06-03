@@ -375,44 +375,14 @@ def update_question(question_id):
         update_doc = {}
         if update_fields:
             update_doc["$set"] = update_fields
-<<<<<<< HEAD
-<<<<<<< HEAD
-
-        if update_doc:
-            db.user.update_one({"_id": user_id}, update_doc)
 
         db.user.update_one({"_id": user_id}, update_doc)
-=======
-        if inc_fields:
-            update_doc["$inc"] = inc_fields
-            print("UPDATE DOC:")
-            print(update_doc)
->>>>>>> a4da477 (feat: add revision status and last reviewed date)
-
-        result = db.user.update_one(
-=======
+        
         if update_doc:
-            db.user.update_one({"_id": user_id}, update_doc)
-=======
-        if inc_fields:
-            update_doc["$inc"] = inc_fields
-
-        db.user.update_one(
->>>>>>> 567a707 (route)
-            {"_id": user_id},
-            update_doc
-        )
-
-<<<<<<< HEAD
-<<<<<<< HEAD
-        print("MATCHED:", result.matched_count)
-        print("MODIFIED:", result.modified_count)
-
-=======
->>>>>>> a4da477 (feat: add revision status and last reviewed date)
-=======
->>>>>>> 9000082 (route)
->>>>>>> 567a707 (route)
+            db.user.update_one(
+                {"_id": user_id},
+                update_doc
+            )
         current_user.reload()
 
         pre = current_app.config.get("_PRECOMPUTED")
@@ -701,13 +671,19 @@ def import_commit():
                 "timestamp": timestamp,
 
                 "revision_status":
-                    existing.get(
+                    imp_val.get(
+                        "revision_status"
+                    )
+                    or existing.get(
                         "revision_status",
                         "To Review"
                     ),
 
                 "last_reviewed":
-                    existing.get(
+                    imp_val.get(
+                        "last_reviewed"
+                    )
+                    or existing.get(
                         "last_reviewed"
                     )
             }
