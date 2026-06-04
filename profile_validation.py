@@ -1,6 +1,8 @@
 from urllib.parse import urlparse
 
 
+import re
+
 PROFILE_FIELD_LIMITS = {
     'name': 100,
     'bio': 500,
@@ -62,7 +64,6 @@ def build_profile_updates(data):
             value = url_val
 
         update_fields[field] = value
-
     if 'profile_visibility' in data:
         visibility = data['profile_visibility']
 
@@ -77,3 +78,12 @@ def build_profile_updates(data):
         update_fields['profile_visibility'] = visibility
 
     return update_fields, None
+
+
+def validate_username(username):
+    """Reject usernames containing characters dangerous in JavaScript string contexts."""
+    if not username:
+        return username
+    if re.search(r"['\"\\<>\n\r]|</", username):
+        raise ValueError("Username contains invalid characters")
+    return username
