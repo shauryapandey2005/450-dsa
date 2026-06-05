@@ -333,19 +333,39 @@ async function loadLeaderboard(page = 1) {
   leaderboardController = controller;
   isLoading = true;
   
-  document.getElementById('lbBody').innerHTML = '<tr><td colspan="5" class="loading" aria-label="Loading leaderboard data">Loading...</td><tr>';
+  // NOTE: Fixed the typo at the very end of this string (changed <tr> to </tr>)
+  document.getElementById('lbBody').innerHTML = '<tr><td colspan="5" class="loading" aria-label="Loading leaderboard data">Loading...</td></tr>';
   
   try {
     const url = `/api/leaderboard?mode=${activeMode}&page=${page}&per_page=20&current_user_id=${CURRENT_USER_ID || ''}`;
+    
+    // 1. Make the network request
     const response = await fetch(url, { signal: controller.signal });
-    const data = await response.json();
 
     if (leaderboardController !== controller) return;
 
+    // 2. NEW FIX: Check if the response is OK *before* calling .json()
     if (!response.ok) {
-      throw new Error(data.error || data.message || `Leaderboard request failed (${response.status})`);
+      let errorMessage = `Leaderboard request failed (${response.status})`;
+      
+      if (response.status === 429) {
+        errorMessage = "Too many requests. Please try again in a moment.";
+      } else {
+        // Attempt to parse a JSON error payload if one exists, but don't crash if it's HTML
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorData.message || errorMessage;
+        } catch (e) {
+          // Ignore JSON parse errors on bad responses (like an Nginx 502 HTML page)
+        }
+      }
+      throw new Error(errorMessage);
     }
 
+    // 3. Now it is 100% safe to parse the successful JSON
+    const data = await response.json();
+
+    // 4. NEW FIX: Check for malformed successful payloads
     if (!Array.isArray(data.entries)) {
       throw new Error('Leaderboard response was missing entries.');
     }
@@ -356,10 +376,13 @@ async function loadLeaderboard(page = 1) {
     
     renderTable(data.entries, activeMode);
     renderPagination();
+    
   } catch (error) {
     if (error.name === 'AbortError') return;
     if (leaderboardController !== controller) return;
     console.error('Error loading leaderboard:', error);
+    
+    // This will trigger your custom error UI!
     renderLeaderboardError(error);
   } finally {
     if (leaderboardController === controller) {
@@ -368,6 +391,9 @@ async function loadLeaderboard(page = 1) {
     }
   }
 }
+  
+
+   
 
 function renderTable(entries, mode) {
   const body = document.getElementById('lbBody');
