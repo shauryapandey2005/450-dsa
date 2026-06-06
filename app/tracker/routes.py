@@ -378,9 +378,10 @@ def update_question(question_id):
         update_doc = {}
         if update_fields:
             update_doc["$set"] = update_fields
-
-        db.user.update_one({"_id": user_id}, update_doc)
-
+            
+        if inc_fields:
+            update_doc["$inc"] = inc_fields
+            
         if update_doc:
             db.user.update_one(
                 {"_id": user_id},
