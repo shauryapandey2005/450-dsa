@@ -361,9 +361,7 @@ def update_question(question_id):
         message = (
             f"Revision status updated for "
             f"'{question.get('problem', 'Question')}'"
-        )   
-
-
+        )
     if "notes" in data:
         update_fields[f"progress.{question_id}.notes"] = data["notes"]
         message = f"📝 Notes saved for '{question.get('problem', 'Question')}'!"

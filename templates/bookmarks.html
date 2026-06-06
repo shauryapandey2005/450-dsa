@@ -155,11 +155,10 @@
           </div>
           <small>
               {% if p and p.get('last_reviewed') %}
-                  {{ p.get('last_reviewed').strftime('%d %b %Y %H:%M') }}
+                {{ p.get('last_reviewed').strftime('%d %b %Y %H:%M') }}
               {% endif %}
           </small>
-      </td>
-
+        </td>
       </tr>
       {% endfor %}
     </tbody>

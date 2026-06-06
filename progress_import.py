@@ -243,9 +243,6 @@ def process_dry_run(parsed_items, db_questions, current_progress):
                 "last_reviewed"
             ),
         }
-
-        print(mapped_progress)
-
         existing = current_progress.get(q_id, {})
         change_desc = []
         if item["done"] != bool(existing.get("done")):
