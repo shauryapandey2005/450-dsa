@@ -239,6 +239,9 @@ def public_card(user_id):
     if visibility == "private" and not viewer_is_owner:
         return "Profile is private", 403
 
+    if visibility == "stats_only" and not viewer_is_owner:
+        return "Profile card is unavailable for stats-only profiles", 403
+
     try:
         img_io, etag, last_modified = get_public_card_image(user_id, object_id, db_handle=db)
     except LookupError:

@@ -118,4 +118,4 @@ def test_stats_only_public_profile_shows_stats_without_identity(monkeypatch):
     assert "LeetCode" in html
     assert "Stats User" not in html
     assert "stats@example.com" not in html
-    assert "https://example.com/stats-avatar.png" not in html    
+    assert "https://example.com/stats-avatar.png" not in html
