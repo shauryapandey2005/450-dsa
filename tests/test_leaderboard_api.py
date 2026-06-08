@@ -44,3 +44,4 @@ def test_leaderboard_429_response(monkeypatch):
         
         data = response.get_json()
         assert "error" in data or "message" in data, "429 JSON must contain an error message"
+        
